@@ -185,10 +185,12 @@ with st.sidebar:
     api_key = st.text_input("輸入 Gemini API Key", type="password", help="請輸入您的 Google AI Studio API Key")
     
     st.markdown("### 🧠 模型選擇")
+    # 更新為使用者指定的模型清單
     model_options = [
-        "gemini-2.0-flash-exp", # 建議使用新版模型
-        "gemini-1.5-pro",
-        "gemini-1.5-flash"
+        "gemini-3-pro",
+        "gemini-2.5-pro",
+        "gemini-3-pro-preview",
+        "gemini-2.5-flash"
     ]
     selected_model = st.selectbox("使用模型", model_options, index=0)
     
