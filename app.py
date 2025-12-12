@@ -90,6 +90,7 @@ def process_uploaded_file(uploaded_file):
     處理上傳檔案：
     - docx 會轉 txt 再上傳
     - 其他格式直接上傳
+    - 支援圖片、PDF、影片、文字檔
     回傳: Gemini File Object 或 None
     """
     if uploaded_file is None:
@@ -105,7 +106,7 @@ def process_uploaded_file(uploaded_file):
             tmp.write(uploaded_file.getvalue())
             tmp_path = tmp.name
 
-        # 特殊處理 docx：先抽文字轉 txt
+        # 特殊處理 docx：先抽文字轉 txt，因為 Gemini API 對純文字檔支援度極佳
         if suffix == '.docx':
             text_content = extract_text_from_docx(tmp_path)
             os.remove(tmp_path)
@@ -185,9 +186,9 @@ with st.sidebar:
     
     st.markdown("### 🧠 模型選擇")
     model_options = [
-        "gemini-3-pro",
-        "gemini-3-pro-preview",
-        "gemini-2.5-pro"
+        "gemini-2.0-flash-exp", # 建議使用新版模型
+        "gemini-1.5-pro",
+        "gemini-1.5-flash"
     ]
     selected_model = st.selectbox("使用模型", model_options, index=0)
     
@@ -318,10 +319,11 @@ with tab2:
             client_cta = st.text_input("主要 CTA", placeholder="例：預約諮詢 / 加入 Line / 開始試用")
         
         st.markdown("#### 我方現有資料 / 備註")
+        st.info("💡 即使選擇「沒有頁面」，也可以在此上傳產品介紹、客戶訪談紀錄或相關文件供 AI 參考。")
         col1, col2 = st.columns([1, 1])
         with col1:
             our_files = st.file_uploader(
-                "上傳我方現有 Landing Page 素材（截圖 / PDF / Word 等，No Page 模式可留白）", 
+                "上傳文件 (產品資料/現有LP截圖/相關素材)", 
                 accept_multiple_files=True,
                 type=['docx', 'png', 'jpg', 'jpeg', 'pdf', 'mp4', 'txt'],
                 key="s2_files"
@@ -336,12 +338,13 @@ with tab2:
             if configure_gemini(api_key):
                 gemini_files_s2 = []
                 
-                # No Page 模式：不需要頁面檔案
-                if step2_mode != "客戶沒有頁面（No Page）" and our_files:
+                # --- 修正邏輯：只要有上傳檔案就處理，不限制模式 ---
+                if our_files:
                     for f in our_files:
                         g_file = process_uploaded_file(f)
                         if g_file:
                             gemini_files_s2.append(g_file)
+                # ---------------------------------------------
                 
                 # 根據模式選擇 prompt
                 if step2_mode == "客戶沒有頁面（No Page）":
@@ -353,7 +356,8 @@ with tab2:
 - 目標受眾（audience）：{client_audience}
 - 主要 CTA：{client_cta}
 
-# 客戶補充資訊
+# 客戶補充資訊與文件
+請參考我上傳的文件（如有，包含產品資料、簡報等）以及以下文字說明：
 {our_text}
 
 # 競品洞察背景
@@ -362,6 +366,7 @@ with tab2:
 
 # 你的任務
 請作為資深 CRO 顧問，協助我為「沒有頁面」的客戶建立一份《Landing Page 初版定位與建議結構》。
+請參考我提供的補充文件來萃取產品優勢與痛點。
 
 請輸出：
 
@@ -386,8 +391,9 @@ with tab2:
 - 客戶受眾（audience）：{client_audience}
 - 主要 CTA：{client_cta}
 
-# 客戶現有頁面資料
+# 客戶現有頁面資料與補充文件
 {our_text}
+(請同時參考附件檔案，可能是產品文件或現有頁面截圖)
 
 # 競品背景
 Step 1 競品拆解摘要如下：
@@ -418,8 +424,9 @@ Step 1 競品拆解摘要如下：
 - 受眾：{client_audience}
 - CTA：{client_cta}
 
-# 客戶現有頁面內容
+# 客戶現有頁面內容與補充文件
 {our_text}
+(請同時參考附件檔案)
 
 # 競品拆解摘要
 {st.session_state.step1_result}
